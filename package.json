@@ -1,0 +1,48 @@
+{
+  "name": "keebtestsuite",
+  "productName": "KeebTestSuite",
+  "version": "1.0.0",
+  "description": "A full keyboard testing suite for every keyboard size, with key rollover testing, typing games, and interactive graphics.",
+  "main": "main/main.js",
+  "author": "KeebTestSuite",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --x64",
+    "dist:win:portable": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.keebtestsuite.app",
+    "productName": "KeebTestSuite",
+    "files": [
+      "main/**/*",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "KeebTestSuite-Portable-${version}.exe"
+    }
+  }
+}

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+<title>KeebTestSuite</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand__mark">⌨</div>
+        <div class="brand__text">
+          <div class="brand__name">KeebTestSuite</div>
+          <div class="brand__tag">full keyboard diagnostics</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav__item is-active" data-view="tester">
+          <span class="nav__icon">🧪</span> Key Tester
+        </button>
+        <button class="nav__item" data-view="speed">
+          <span class="nav__icon">⏱</span> Typing Speed Test
+        </button>
+        <button class="nav__item" data-view="falling">
+          <span class="nav__icon">🌧</span> Falling Words
+        </button>
+        <button class="nav__item" data-view="heatmap">
+          <span class="nav__icon">🔥</span> Heatmap &amp; Stats
+        </button>
+      </nav>
+
+      <div class="sidebar__section">
+        <div class="sidebar__label">Keyboard size</div>
+        <select id="sizeSelect" class="size-select"></select>
+        <p id="sizeBlurb" class="size-blurb"></p>
+      </div>
+
+      <div class="sidebar__footer">v1.0.0 · ANSI layouts</div>
+    </aside>
+
+    <main class="content">
+
+      <!-- ===== Key Tester ===== -->
+      <section class="view is-active" data-view="tester">
+        <header class="view__header">
+          <h1>Key Tester</h1>
+          <p>Press every key on your keyboard. Green keys have registered at least one press. Watch for chatter (double actuation) and rollover limits.</p>
+        </header>
+
+        <div class="stat-row">
+          <div class="stat-tile">
+            <div class="stat-tile__value" id="tCoverage">0%</div>
+            <div class="stat-tile__label">Keys tested</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value" id="tRollover">0</div>
+            <div class="stat-tile__label">Current rollover</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value" id="tMaxRollover">0</div>
+            <div class="stat-tile__label">Max rollover (NKRO)</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value" id="tChatter">0</div>
+            <div class="stat-tile__label">Chatter events</div>
+          </div>
+          <button class="btn" id="tResetBtn">Reset Test</button>
+        </div>
+
+        <div class="progress">
+          <div class="progress__bar" id="tProgressBar"></div>
+        </div>
+
+        <div class="kb-stage" id="testerKb" tabindex="-1"></div>
+
+        <details class="untested">
+          <summary>Untested keys <span id="untestedCount">0</span></summary>
+          <div id="untestedList" class="untested__list"></div>
+        </details>
+      </section>
+
+      <!-- ===== Typing Speed Test ===== -->
+      <section class="view" data-view="speed">
+        <header class="view__header">
+          <h1>Typing Speed Test</h1>
+          <p>Type the passage as fast and accurately as you can. Timing starts on your first keystroke.</p>
+        </header>
+
+        <div class="stat-row">
+          <div class="stat-tile"><div class="stat-tile__value" id="sWpm">0</div><div class="stat-tile__label">WPM</div></div>
+          <div class="stat-tile"><div class="stat-tile__value" id="sAcc">100%</div><div class="stat-tile__label">Accuracy</div></div>
+          <div class="stat-tile"><div class="stat-tile__value" id="sTime">0.0s</div><div class="stat-tile__label">Time</div></div>
+          <button class="btn" id="sRestartBtn">Restart</button>
+        </div>
+
+        <div class="prompt-box" id="sPrompt"></div>
+        <input id="sInput" class="hidden-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Click here and start typing…" />
+
+        <div id="sResult" class="result-banner" hidden></div>
+
+        <div class="kb-stage kb-stage--mini" id="speedKb" tabindex="-1"></div>
+      </section>
+
+      <!-- ===== Falling Words ===== -->
+      <section class="view" data-view="falling">
+        <header class="view__header">
+          <h1>Falling Words</h1>
+          <p>Type each word before it hits the floor. Speed ramps up the longer you survive.</p>
+        </header>
+
+        <div class="stat-row">
+          <div class="stat-tile"><div class="stat-tile__value" id="fScore">0</div><div class="stat-tile__label">Score</div></div>
+          <div class="stat-tile"><div class="stat-tile__value" id="fLives">5</div><div class="stat-tile__label">Lives</div></div>
+          <button class="btn" id="fStartBtn">Start Game</button>
+        </div>
+
+        <div class="arena" id="fArena"></div>
+        <input id="fInput" class="hidden-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Type the falling word, then press space…" disabled />
+
+        <div id="fResult" class="result-banner" hidden></div>
+
+        <div class="kb-stage kb-stage--mini" id="fallingKb" tabindex="-1"></div>
+      </section>
+
+      <!-- ===== Heatmap & Stats ===== -->
+      <section class="view" data-view="heatmap">
+        <header class="view__header">
+          <h1>Heatmap &amp; Stats</h1>
+          <p>A running record of every key you've pressed across all views, this session and previous ones.</p>
+        </header>
+
+        <div class="stat-row">
+          <div class="stat-tile"><div class="stat-tile__value" id="hTotal">0</div><div class="stat-tile__label">Total presses</div></div>
+          <div class="stat-tile"><div class="stat-tile__value" id="hTop">–</div><div class="stat-tile__label">Most used key</div></div>
+          <div class="stat-tile"><div class="stat-tile__value" id="hBestWpm">0</div><div class="stat-tile__label">Best WPM</div></div>
+          <div class="stat-tile"><div class="stat-tile__value" id="hMaxRollover">0</div><div class="stat-tile__label">Max rollover ever</div></div>
+          <div class="stat-tile"><div class="stat-tile__value" id="hGames">0</div><div class="stat-tile__label">Games played</div></div>
+          <button class="btn btn--danger" id="hResetBtn">Reset Stats</button>
+        </div>
+
+        <div class="legend">
+          <span>cold</span>
+          <div class="legend__bar"></div>
+          <span>hot</span>
+        </div>
+
+        <div class="kb-stage" id="heatmapKb" tabindex="-1"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="js/layouts.js"></script>
+  <script src="js/keyboard.js"></script>
+  <script src="js/keytester.js"></script>
+  <script src="js/wordbank.js"></script>
+  <script src="js/games.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/heatmap.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
