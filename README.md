@@ -55,3 +55,7 @@ renderer/        UI (plain HTML/CSS/JS, no framework, no bundler)
 build/           App icon (icon.png / icon.ico)
 scripts/         Icon generator (Pillow)
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
