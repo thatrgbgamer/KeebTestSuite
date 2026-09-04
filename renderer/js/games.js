@@ -1,14 +1,35 @@
 /* Typing games: WPM speed test + falling-words arcade game. */
 (function (global) {
   // ---------------------------------------------------------------- Speed Test
+  const INFINITE_LOOKAHEAD = 60; // keep at least this many un-typed chars queued up
+  const INFINITE_TRIM_AT = 400; // fold completed text into cumulative stats past this length
+
+  function pickSentences(n) {
+    const picks = [];
+    const pool = global.KTS.SENTENCES.slice();
+    for (let i = 0; i < n && pool.length; i++) {
+      picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    return picks.join(' ');
+  }
+
+  function randomSentence() {
+    const bank = global.KTS.SENTENCES;
+    return bank[Math.floor(Math.random() * bank.length)];
+  }
+
   function SpeedTest(opts) {
     this.promptEl = opts.promptEl;
     this.inputEl = opts.inputEl;
     this.onUpdate = opts.onUpdate || function () {};
     this.onFinish = opts.onFinish || function () {};
+    this.mode = 'normal';
     this.target = '';
     this.startTime = null;
     this.timer = null;
+    this.running = false;
+    this.cumCorrect = 0;
+    this.cumTyped = 0;
     this._bindInput();
   }
 
@@ -16,25 +37,23 @@
     this.inputEl.addEventListener('input', () => this._check());
   };
 
-  SpeedTest.prototype.start = function () {
-    const n = 2 + Math.floor(Math.random() * 2);
-    const picks = [];
-    const pool = global.KTS.SENTENCES.slice();
-    for (let i = 0; i < n && pool.length; i++) {
-      picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-    }
-    this.target = picks.join(' ');
+  SpeedTest.prototype.start = function (mode) {
+    this.mode = mode === 'infinite' ? 'infinite' : 'normal';
+    this.target = this.mode === 'infinite' ? pickSentences(2) : pickSentences(2 + Math.floor(Math.random() * 2));
     this.startTime = null;
+    this.cumCorrect = 0;
+    this.cumTyped = 0;
     this.inputEl.value = '';
     this.inputEl.disabled = false;
     this.finished = false;
+    this.running = true;
     clearInterval(this.timer);
-    this._render(0);
+    this._render();
     this.inputEl.focus();
     this.onUpdate(this._stats(0));
   };
 
-  SpeedTest.prototype._render = function (correctCount) {
+  SpeedTest.prototype._render = function () {
     const typed = this.inputEl.value;
     const frag = document.createDocumentFragment();
     for (let i = 0; i < this.target.length; i++) {
@@ -53,13 +72,29 @@
 
   SpeedTest.prototype._stats = function (elapsedMsOverride) {
     const typed = this.inputEl.value;
-    let correct = 0;
+    let correct = this.cumCorrect;
     for (let i = 0; i < typed.length; i++) if (typed[i] === this.target[i]) correct++;
+    const typedTotal = this.cumTyped + typed.length;
     const elapsedMs = elapsedMsOverride != null ? elapsedMsOverride : (this.startTime ? performance.now() - this.startTime : 0);
     const minutes = Math.max(elapsedMs / 60000, 1 / 60000);
     const wpm = Math.round((correct / 5) / minutes);
-    const accuracy = typed.length ? Math.round((correct / typed.length) * 100) : 100;
-    return { wpm: isFinite(wpm) ? Math.max(wpm, 0) : 0, accuracy, elapsedMs, typed: typed.length, target: this.target.length, correct };
+    const accuracy = typedTotal ? Math.round((correct / typedTotal) * 100) : 100;
+    return { wpm: isFinite(wpm) ? Math.max(wpm, 0) : 0, accuracy, elapsedMs, typed: typedTotal, target: this.target.length, correct };
+  };
+
+  // Infinite mode: queue up more text ahead of the cursor, and fold already-typed
+  // text into the cumulative counters so the prompt/input never grow unbounded.
+  SpeedTest.prototype._extendInfinite = function () {
+    const typed = this.inputEl.value;
+    while (this.target.length - typed.length < INFINITE_LOOKAHEAD) {
+      this.target += ' ' + randomSentence();
+    }
+    if (typed.length >= INFINITE_TRIM_AT) {
+      for (let i = 0; i < typed.length; i++) if (typed[i] === this.target[i]) this.cumCorrect++;
+      this.cumTyped += typed.length;
+      this.target = this.target.slice(typed.length);
+      this.inputEl.value = '';
+    }
   };
 
   SpeedTest.prototype._check = function () {
@@ -68,6 +103,7 @@
       this.startTime = performance.now();
       this.timer = setInterval(() => this.onUpdate(this._stats()), 200);
     }
+    if (this.mode === 'infinite') this._extendInfinite();
     const typed = this.inputEl.value;
     if (typed.length > this.target.length) {
       this.inputEl.value = typed.slice(0, this.target.length);
@@ -75,17 +111,24 @@
     this._render();
     const stats = this._stats();
     this.onUpdate(stats);
-    if (this.inputEl.value.length >= this.target.length) {
+    if (this.mode === 'normal' && this.inputEl.value.length >= this.target.length) {
       this.finished = true;
+      this.running = false;
       this.inputEl.disabled = true;
       clearInterval(this.timer);
       this.onFinish(stats);
     }
   };
 
+  // Ends an in-progress test early (used to end infinite mode, or bail out of normal mode).
   SpeedTest.prototype.stop = function () {
+    if (this.finished) return;
+    const stats = this._stats();
+    this.finished = true;
+    this.running = false;
     clearInterval(this.timer);
     this.inputEl.disabled = true;
+    this.onFinish(stats);
   };
 
   // ---------------------------------------------------------------- Falling Words

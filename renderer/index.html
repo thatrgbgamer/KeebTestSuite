@@ -86,13 +86,19 @@
       <section class="view" data-view="speed">
         <header class="view__header">
           <h1>Typing Speed Test</h1>
-          <p>Type the passage as fast and accurately as you can. Timing starts on your first keystroke.</p>
+          <p>Type the passage as fast and accurately as you can. Timing starts on your first keystroke. Normal mode ends at the end of the passage; Infinite mode keeps feeding you text until you stop.</p>
         </header>
+
+        <div class="mode-toggle" id="sModeToggle">
+          <button class="mode-btn is-active" data-mode="normal">Normal</button>
+          <button class="mode-btn" data-mode="infinite">Infinite</button>
+        </div>
 
         <div class="stat-row">
           <div class="stat-tile"><div class="stat-tile__value" id="sWpm">0</div><div class="stat-tile__label">WPM</div></div>
           <div class="stat-tile"><div class="stat-tile__value" id="sAcc">100%</div><div class="stat-tile__label">Accuracy</div></div>
           <div class="stat-tile"><div class="stat-tile__value" id="sTime">0.0s</div><div class="stat-tile__label">Time</div></div>
+          <button class="btn btn--danger" id="sStopBtn" hidden>Stop</button>
           <button class="btn" id="sRestartBtn">Restart</button>
         </div>
 

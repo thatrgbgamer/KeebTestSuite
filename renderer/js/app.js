@@ -34,6 +34,7 @@
 
   // ---------- speed test ----------
   const speedKb = KTS.buildKeyboard($('#speedKb'), 'sixty');
+  let speedMode = 'normal';
   const speedTest = new KTS.SpeedTest({
     promptEl: $('#sPrompt'),
     inputEl: $('#sInput'),
@@ -45,14 +46,25 @@
     onFinish: (s) => {
       KTS.Stats.noteWpm(s.wpm);
       KTS.Stats.noteGamePlayed();
+      $('#sStopBtn').hidden = true;
       const banner = $('#sResult');
       banner.hidden = false;
       banner.textContent = `Done! ${s.wpm} WPM at ${s.accuracy}% accuracy in ${(s.elapsedMs / 1000).toFixed(1)}s.`;
     }
   });
-  $('#sRestartBtn').addEventListener('click', () => {
+  function startSpeedTest() {
     $('#sResult').hidden = true;
-    speedTest.start();
+    $('#sStopBtn').hidden = speedMode !== 'infinite';
+    speedTest.start(speedMode);
+  }
+  $('#sRestartBtn').addEventListener('click', startSpeedTest);
+  $('#sStopBtn').addEventListener('click', () => speedTest.stop());
+  document.querySelectorAll('#sModeToggle .mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      speedMode = btn.dataset.mode;
+      document.querySelectorAll('#sModeToggle .mode-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
+      startSpeedTest();
+    });
   });
 
   // ---------- falling words ----------

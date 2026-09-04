@@ -108,6 +108,14 @@ html, body {
 .btn:hover { filter: brightness(1.08); }
 .btn--danger { background: linear-gradient(135deg, #ff5b6f, #ff8f5b); }
 
+.mode-toggle { display: inline-flex; gap: 4px; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 4px; margin-bottom: 18px; }
+.mode-btn {
+  background: transparent; border: none; color: var(--muted); font-family: inherit;
+  font-size: 12.5px; font-weight: 600; padding: 7px 16px; border-radius: 6px; cursor: pointer;
+}
+.mode-btn:hover { color: var(--text); }
+.mode-btn.is-active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+
 .progress { height: 8px; background: var(--panel-2); border-radius: 6px; overflow: hidden; margin-bottom: 22px; border: 1px solid var(--border); }
 .progress__bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--good)); transition: width .2s ease; }
 
