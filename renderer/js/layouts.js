@@ -1,160 +1,232 @@
 /* Keyboard layout definitions (ANSI) for every common form factor.
- * Widths are in "u" units (1u = one standard keycap width).
- * Every key references its physical KeyboardEvent.code so detection
- * is layout/language independent.
+ * Every key is placed with real keyboard-layout-editor-style coordinates:
+ * {c: KeyboardEvent.code, l: label, x, y: position in "u" units, w, h: size in u}.
+ * Physical codes (not characters) drive detection, so it works regardless
+ * of OS keyboard layout/language. No "Menu" key anywhere — vanishingly few
+ * boards still ship one, so it's left out in favor of a wider right Ctrl.
  */
 (function (global) {
-  const K = (c, l, w) => ({ c, l, w: w || 1 });
-  const SP = (w) => ({ spacer: true, w });
+  const K = (c, l, x, y, w, h) => ({ c, l, x, y, w: w || 1, h: h || 1 });
 
-  // ---- reusable row fragments (15u main cluster, shared by every size) ----
-  const numRow = () => [
-    K('Backquote', '`'), K('Digit1', '1'), K('Digit2', '2'), K('Digit3', '3'),
-    K('Digit4', '4'), K('Digit5', '5'), K('Digit6', '6'), K('Digit7', '7'),
-    K('Digit8', '8'), K('Digit9', '9'), K('Digit0', '0'), K('Minus', '-'),
-    K('Equal', '='), K('Backspace', 'Backspace', 2)
-  ];
-  const qwertyRow = () => [
-    K('Tab', 'Tab', 1.5), K('KeyQ', 'Q'), K('KeyW', 'W'), K('KeyE', 'E'),
-    K('KeyR', 'R'), K('KeyT', 'T'), K('KeyY', 'Y'), K('KeyU', 'U'),
-    K('KeyI', 'I'), K('KeyO', 'O'), K('KeyP', 'P'), K('BracketLeft', '['),
-    K('BracketRight', ']'), K('Backslash', '\\', 1.5)
-  ];
-  const homeRow = () => [
-    K('CapsLock', 'Caps', 1.75), K('KeyA', 'A'), K('KeyS', 'S'), K('KeyD', 'D'),
-    K('KeyF', 'F'), K('KeyG', 'G'), K('KeyH', 'H'), K('KeyJ', 'J'),
-    K('KeyK', 'K'), K('KeyL', 'L'), K('Semicolon', ';'), K('Quote', "'"),
-    K('Enter', 'Enter', 2.25)
-  ];
-  const bottomRow = (rightW) => [
-    K('ShiftLeft', 'Shift', 2.25), K('KeyZ', 'Z'), K('KeyX', 'X'), K('KeyC', 'C'),
-    K('KeyV', 'V'), K('KeyB', 'B'), K('KeyN', 'N'), K('KeyM', 'M'),
-    K('Comma', ','), K('Period', '.'), K('Slash', '/'),
-    K('ShiftRight', 'Shift', rightW == null ? 2.75 : rightW)
-  ];
-  const modRow = (opts) => {
+  // ---- reusable row builders (shared column math across every size) ----
+  function numberRow(y) {
+    const digits = ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
+    const labels = ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+    const keys = digits.map((c, i) => K(c, labels[i], i, y));
+    keys.push(K('Backspace', 'Backspace', 13, y, 2));
+    return keys;
+  }
+  function qwertyRow(y) {
+    const codes = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP'];
+    const keys = [K('Tab', 'Tab', 0, y, 1.5)];
+    codes.forEach((c, i) => keys.push(K(c, c.slice(3), 1.5 + i, y)));
+    keys.push(K('BracketLeft', '[', 11.5, y));
+    keys.push(K('BracketRight', ']', 12.5, y));
+    keys.push(K('Backslash', '\\', 13.5, y, 1.5));
+    return keys;
+  }
+  function homeRow(y) {
+    const codes = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL'];
+    const keys = [K('CapsLock', 'Caps', 0, y, 1.75)];
+    codes.forEach((c, i) => keys.push(K(c, c.slice(3), 1.75 + i, y)));
+    keys.push(K('Semicolon', ';', 10.75, y));
+    keys.push(K('Quote', "'", 11.75, y));
+    keys.push(K('Enter', 'Enter', 12.75, y, 2.25));
+    return keys;
+  }
+  function bottomRow(y, rightShiftW) {
+    const codes = ['KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM'];
+    const keys = [K('ShiftLeft', 'Shift', 0, y, 2.25)];
+    codes.forEach((c, i) => keys.push(K(c, c.slice(3), 2.25 + i, y)));
+    keys.push(K('Comma', ',', 9.25, y));
+    keys.push(K('Period', '.', 10.25, y));
+    keys.push(K('Slash', '/', 11.25, y));
+    const rw = rightShiftW || 2.75;
+    keys.push(K('ShiftRight', 'Shift', 12.25, y, rw));
+    return keys;
+  }
+  // Bottom-row mod cluster. No Menu key — vanishingly few boards still ship one, so
+  // right Ctrl just fills the space out to the row's normal 15u edge instead.
+  function modRow(y, opts) {
     opts = opts || {};
-    const row = [
-      K('ControlLeft', 'Ctrl', 1.25), K('MetaLeft', 'Win', 1.25),
-      K('AltLeft', 'Alt', 1.25), K('Space', '', opts.spaceW || 6.25),
-      K('AltRight', 'Alt', 1.25)
+    const spaceW = opts.spaceW || 6.25;
+    const keys = [
+      K('ControlLeft', 'Ctrl', 0, y, 1.25),
+      K('MetaLeft', 'Win', 1.25, y, 1.25),
+      K('AltLeft', 'Alt', 2.5, y, 1.25),
+      K('Space', '', 3.75, y, spaceW),
+      K('AltRight', 'Alt', 3.75 + spaceW, y, 1.25)
     ];
-    if (opts.fn) row.push(K('Fn', 'Fn', 1.25));
-    else row.push(K('MetaRight', 'Win', 1.25));
-    if (!opts.noMenu) row.push(K('ContextMenu', 'Menu', 1.25));
-    row.push(K('ControlRight', 'Ctrl', opts.rightCtrlW || 1.25));
-    return row;
-  };
-  const funcRowWide = () => [
-    K('Escape', 'Esc'), SP(1),
-    K('F1', 'F1'), K('F2', 'F2'), K('F3', 'F3'), K('F4', 'F4'), SP(0.5),
-    K('F5', 'F5'), K('F6', 'F6'), K('F7', 'F7'), K('F8', 'F8'), SP(0.5),
-    K('F9', 'F9'), K('F10', 'F10'), K('F11', 'F11'), K('F12', 'F12')
-  ];
-  const funcRowTight = () => [
-    K('Escape', 'Esc'), SP(0.25),
-    K('F1', 'F1'), K('F2', 'F2'), K('F3', 'F3'), K('F4', 'F4'),
-    K('F5', 'F5'), K('F6', 'F6'), K('F7', 'F7'), K('F8', 'F8'),
-    K('F9', 'F9'), K('F10', 'F10'), K('F11', 'F11'), K('F12', 'F12')
-  ];
+    let x = 3.75 + spaceW + 1.25;
+    if (!opts.noRightWin) {
+      keys.push(K('MetaRight', 'Win', x, y, 1.25));
+      x += 1.25;
+    }
+    const rCtrlW = opts.rightCtrlW || Math.max(1.25, 15 - x);
+    keys.push(K('ControlRight', 'Ctrl', x, y, rCtrlW));
+    return keys;
+  }
+  function funcRow(y, tight) {
+    const keys = [K('Escape', 'Esc', 0, y)];
+    if (tight) {
+      for (let i = 1; i <= 12; i++) keys.push(K('F' + i, 'F' + i, 0.25 + i, y));
+    } else {
+      const groups = [[1, 4], [5, 8], [9, 12]];
+      let x = 2;
+      groups.forEach(([a, b], gi) => {
+        for (let n = a; n <= b; n++) {
+          keys.push(K('F' + n, 'F' + n, x, y));
+          x += 1;
+        }
+        if (gi < groups.length - 1) x += 0.5;
+      });
+    }
+    return keys;
+  }
 
-  const navBlock6 = () => [
-    [K('Insert', 'Ins'), K('Home', 'Home'), K('PageUp', 'PgUp')],
-    [K('Delete', 'Del'), K('End', 'End'), K('PageDown', 'PgDn')]
-  ];
-  const arrowBlock = () => [
-    [SP(1), K('ArrowUp', '↑'), SP(1)],
-    [K('ArrowLeft', '←'), K('ArrowDown', '↓'), K('ArrowRight', '→')]
-  ];
+  const ROW = { func: 0, num: 1.25, qwerty: 2.25, home: 3.25, bottom: 4.25, mod: 5.25 };
+  const NO_FUNC_ROW = { num: 0, qwerty: 1, home: 2, bottom: 3, mod: 4 };
 
-  const numpadBlock = (topSpacerRows) => {
-    const rows = [];
-    for (let i = 0; i < (topSpacerRows || 0); i++) rows.push([SP(4)]);
-    rows.push([K('NumLock', 'Num'), K('NumpadDivide', '/'), K('NumpadMultiply', '*'), K('NumpadSubtract', '-')]);
-    rows.push([K('Numpad7', '7'), K('Numpad8', '8'), K('Numpad9', '9'), K('NumpadAdd', '+', 1, 2)]);
-    rows.push([K('Numpad4', '4'), K('Numpad5', '5'), K('Numpad6', '6')]);
-    rows.push([K('Numpad1', '1'), K('Numpad2', '2'), K('Numpad3', '3'), K('NumpadEnter', 'Enter', 1, 2)]);
-    rows.push([K('Numpad0', '0', 2), K('NumpadDecimal', '.')]);
-    return rows;
-  };
+  function fullSizeMain(tightFunc) {
+    return [].concat(
+      funcRow(ROW.func, tightFunc),
+      numberRow(ROW.num),
+      qwertyRow(ROW.qwerty),
+      homeRow(ROW.home),
+      bottomRow(ROW.bottom, tightFunc ? 1.75 : undefined),
+      modRow(ROW.mod)
+    );
+  }
 
-  function block(rows) {
-    return { rows };
+  // 3x2 Ins/Home/PgUp + Del/End/PgDn block, plus an inverted-T arrow cluster below.
+  function fullNavCluster(x) {
+    return [
+      K('PrintScreen', 'PrtSc', x, ROW.func),
+      K('ScrollLock', 'ScrLk', x + 1, ROW.func),
+      K('Pause', 'Pause', x + 2, ROW.func),
+      K('Insert', 'Ins', x, ROW.num),
+      K('Home', 'Home', x + 1, ROW.num),
+      K('PageUp', 'PgUp', x + 2, ROW.num),
+      K('Delete', 'Del', x, ROW.qwerty),
+      K('End', 'End', x + 1, ROW.qwerty),
+      K('PageDown', 'PgDn', x + 2, ROW.qwerty),
+      K('ArrowUp', '↑', x + 1, ROW.bottom),
+      K('ArrowLeft', '←', x, ROW.mod),
+      K('ArrowDown', '↓', x + 1, ROW.mod),
+      K('ArrowRight', '→', x + 2, ROW.mod)
+    ];
+  }
+
+  function numpad(x) {
+    return [
+      K('NumLock', 'Num', x, ROW.num), K('NumpadDivide', '/', x + 1, ROW.num), K('NumpadMultiply', '*', x + 2, ROW.num), K('NumpadSubtract', '-', x + 3, ROW.num),
+      K('Numpad7', '7', x, ROW.qwerty), K('Numpad8', '8', x + 1, ROW.qwerty), K('Numpad9', '9', x + 2, ROW.qwerty), K('NumpadAdd', '+', x + 3, ROW.qwerty, 1, 2),
+      K('Numpad4', '4', x, ROW.home), K('Numpad5', '5', x + 1, ROW.home), K('Numpad6', '6', x + 2, ROW.home),
+      K('Numpad1', '1', x, ROW.bottom), K('Numpad2', '2', x + 1, ROW.bottom), K('Numpad3', '3', x + 2, ROW.bottom), K('NumpadEnter', 'Enter', x + 3, ROW.bottom, 1, 2),
+      K('Numpad0', '0', x, ROW.mod, 2), K('NumpadDecimal', '.', x + 2, ROW.mod)
+    ];
   }
 
   const LAYOUTS = {
     full: {
-      id: 'full', label: 'Full-Size (100%)', totalKeys: 104,
-      blurb: 'Function row, main cluster, navigation cluster and numpad.',
-      main: block([funcRowWide(), numRow(), qwertyRow(), homeRow(), bottomRow(), modRow()]),
-      nav: block([[SP(3)], ...navBlock6(), [SP(3)], ...arrowBlock()]),
-      numpad: block(numpadBlock(1))
+      id: 'full', label: 'Full-Size (100%)',
+      blurb: 'Function row, main cluster, dedicated nav cluster, and numpad.',
+      width: 23, rows: 6.25,
+      keys: [].concat(fullSizeMain(false), fullNavCluster(15.5), numpad(19))
     },
     tkl: {
-      id: 'tkl', label: 'Tenkeyless (80%/TKL)', totalKeys: 87,
-      blurb: 'Full-size minus the numpad — same function & nav clusters.',
-      main: block([funcRowWide(), numRow(), qwertyRow(), homeRow(), bottomRow(), modRow()]),
-      nav: block([[SP(3)], ...navBlock6(), [SP(3)], ...arrowBlock()]),
-      numpad: null
+      id: 'tkl', label: 'Tenkeyless (80%/TKL)',
+      blurb: 'Full-size minus the numpad — same function row and nav cluster.',
+      width: 18.5, rows: 6.25,
+      keys: [].concat(fullSizeMain(false), fullNavCluster(15.5))
     },
     e1800: {
-      id: 'e1800', label: '96% (1800-Compact)', totalKeys: 100,
-      blurb: 'TKL density with the numpad pulled flush against the main cluster.',
-      main: block([funcRowTight(), numRow(), qwertyRow(), homeRow(), bottomRow(1.75), modRow({ rightCtrlW: 1 })]),
-      nav: block([
-        [K('Insert', 'Ins'), K('Home', 'Home'), K('PageUp', 'PgUp')],
-        [SP(3)],
-        [SP(3)],
-        [K('Delete', 'Del'), K('End', 'End'), K('PageDown', 'PgDn')],
-        [SP(1), K('ArrowUp', '↑'), SP(1)]
-      ].concat([[K('ArrowLeft', '←'), K('ArrowDown', '↓'), K('ArrowRight', '→')]])),
-      numpad: block(numpadBlock(1))
+      id: 'e1800', label: '96% (1800-Compact)',
+      blurb: 'TKL density with the numpad pulled flush against a compact nav column.',
+      width: 22.75, rows: 6.25,
+      keys: [].concat(
+        fullSizeMain(true),
+        [
+          K('Insert', 'Ins', 15.5, ROW.func), K('Home', 'Home', 16.5, ROW.func), K('PageUp', 'PgUp', 17.5, ROW.func),
+          K('Delete', 'Del', 15.5, ROW.num), K('End', 'End', 16.5, ROW.num), K('PageDown', 'PgDn', 17.5, ROW.num),
+          K('ArrowUp', '↑', 16.5, ROW.bottom),
+          K('ArrowLeft', '←', 15.5, ROW.mod), K('ArrowDown', '↓', 16.5, ROW.mod), K('ArrowRight', '→', 17.5, ROW.mod)
+        ],
+        numpad(18.75)
+      )
     },
     seventyfive: {
-      id: 'seventyfive', label: '75%', totalKeys: 84,
-      blurb: 'TKL layout compressed tight, nav keys pulled into a single column.',
-      main: block([funcRowTight(), numRow(), qwertyRow(), homeRow(), bottomRow(1.75), modRow({ rightCtrlW: 1.25 })]),
-      nav: block([
-        [K('PrintScreen', 'Prt')], [K('Insert', 'Ins')], [K('Delete', 'Del')],
-        [SP(1)],
-        [K('Home', 'Home')], [K('End', 'End')],
-        [SP(1)],
-        [K('PageUp', 'PgUp')],
-        [K('PageDown', 'PgDn')]
-      ]),
-      navArrows: block([[K('ArrowUp', '↑')], [K('ArrowLeft', '←')], [K('ArrowDown', '↓')], [K('ArrowRight', '→')]]),
-      numpad: null
+      id: 'seventyfive', label: '75%',
+      blurb: 'TKL layout compressed tight, with a single nav column and compact arrows.',
+      width: 19.5, rows: 6.25,
+      keys: [].concat(
+        fullSizeMain(true),
+        [
+          K('PrintScreen', 'PrtSc', 15.5, ROW.func),
+          K('Delete', 'Del', 15.5, ROW.num),
+          K('Home', 'Home', 15.5, ROW.qwerty),
+          K('End', 'End', 15.5, ROW.home),
+          K('PageUp', 'PgUp', 15.5, ROW.bottom),
+          K('PageDown', 'PgDn', 15.5, ROW.mod),
+          K('ArrowUp', '↑', 17.5, ROW.bottom),
+          K('ArrowLeft', '←', 16.5, ROW.mod), K('ArrowDown', '↓', 17.5, ROW.mod), K('ArrowRight', '→', 18.5, ROW.mod)
+        ]
+      )
     },
     sixtyfive: {
-      id: 'sixtyfive', label: '65%', totalKeys: 68,
-      blurb: 'No function row, but keeps a compact arrow cluster and a couple of nav keys.',
-      main: block([numRow(), qwertyRow(), homeRow(), bottomRow(1.75), modRow({ rightCtrlW: 1.25, noMenu: true })]),
-      nav: block([[K('Delete', 'Del')], [K('Home', 'Home')], [K('End', 'End')]]),
-      navArrows: block([[SP(1)], [K('ArrowUp', '↑')], [K('ArrowLeft', '←'), K('ArrowDown', '↓'), K('ArrowRight', '→')]]),
-      numpad: null
+      id: 'sixtyfive', label: '65%',
+      blurb: 'No function row, but keeps a compact nav column and arrow cluster.',
+      width: 19.5, rows: 5,
+      keys: [].concat(
+        numberRow(NO_FUNC_ROW.num),
+        qwertyRow(NO_FUNC_ROW.qwerty),
+        homeRow(NO_FUNC_ROW.home),
+        bottomRow(NO_FUNC_ROW.bottom, 1.75),
+        modRow(NO_FUNC_ROW.mod),
+        [
+          K('Delete', 'Del', 15.5, NO_FUNC_ROW.num),
+          K('Home', 'Home', 15.5, NO_FUNC_ROW.qwerty),
+          K('End', 'End', 15.5, NO_FUNC_ROW.home),
+          K('ArrowUp', '↑', 17.5, NO_FUNC_ROW.bottom),
+          K('ArrowLeft', '←', 16.5, NO_FUNC_ROW.mod), K('ArrowDown', '↓', 17.5, NO_FUNC_ROW.mod), K('ArrowRight', '→', 18.5, NO_FUNC_ROW.mod)
+        ]
+      )
     },
     sixty: {
-      id: 'sixty', label: '60%', totalKeys: 61,
+      id: 'sixty', label: '60%',
       blurb: 'No function row, no nav cluster, no arrows or numpad — pure typing core.',
-      main: block([numRow(), qwertyRow(), homeRow(), bottomRow(), modRow()]),
-      nav: null,
-      numpad: null
+      width: 15, rows: 5,
+      keys: [].concat(
+        numberRow(NO_FUNC_ROW.num),
+        qwertyRow(NO_FUNC_ROW.qwerty),
+        homeRow(NO_FUNC_ROW.home),
+        bottomRow(NO_FUNC_ROW.bottom),
+        modRow(NO_FUNC_ROW.mod)
+      )
     },
     forty: {
-      id: 'forty', label: '40%', totalKeys: 47,
-      blurb: 'Minimalist core — letters, a few mods, everything else lives on a Fn layer.',
-      main: block([
-        [K('Tab', 'Tab', 1.5), K('KeyQ', 'Q'), K('KeyW', 'W'), K('KeyE', 'E'), K('KeyR', 'R'), K('KeyT', 'T'),
-          K('KeyY', 'Y'), K('KeyU', 'U'), K('KeyI', 'I'), K('KeyO', 'O'), K('KeyP', 'P'), K('Backspace', 'Bksp', 1.5)],
-        [K('Escape', 'Esc', 1.75), K('KeyA', 'A'), K('KeyS', 'S'), K('KeyD', 'D'), K('KeyF', 'F'), K('KeyG', 'G'),
-          K('KeyH', 'H'), K('KeyJ', 'J'), K('KeyK', 'K'), K('KeyL', 'L'), K('Enter', 'Enter', 2.25)],
-        [K('ShiftLeft', 'Shift', 2.25), K('KeyZ', 'Z'), K('KeyX', 'X'), K('KeyC', 'C'), K('KeyV', 'V'), K('KeyB', 'B'),
-          K('KeyN', 'N'), K('KeyM', 'M'), K('Comma', ','), K('Period', '.'), K('ShiftRight', 'Shift', 2.5)],
-        [K('ControlLeft', 'Ctrl', 1.5), K('MetaLeft', 'Win', 1.5), K('AltLeft', 'Alt', 1.5),
-          K('Fn', 'Fn', 1.5), K('Space', '', 4), K('AltRight', 'Alt', 1.5), K('ControlRight', 'Ctrl', 1.5)]
-      ]),
-      nav: null,
-      numpad: null
+      id: 'forty', label: '40%',
+      blurb: 'Minimalist core — letters and a few mods; everything else lives on a Fn layer.',
+      width: 13, rows: 4,
+      keys: [
+        K('Tab', 'Tab', 0, 0, 1.5),
+        K('KeyQ', 'Q', 1.5, 0), K('KeyW', 'W', 2.5, 0), K('KeyE', 'E', 3.5, 0), K('KeyR', 'R', 4.5, 0), K('KeyT', 'T', 5.5, 0),
+        K('KeyY', 'Y', 6.5, 0), K('KeyU', 'U', 7.5, 0), K('KeyI', 'I', 8.5, 0), K('KeyO', 'O', 9.5, 0), K('KeyP', 'P', 10.5, 0),
+        K('Backspace', 'Bksp', 11.5, 0, 1.5),
+
+        K('Escape', 'Esc', 0, 1, 1.75),
+        K('KeyA', 'A', 1.75, 1), K('KeyS', 'S', 2.75, 1), K('KeyD', 'D', 3.75, 1), K('KeyF', 'F', 4.75, 1), K('KeyG', 'G', 5.75, 1),
+        K('KeyH', 'H', 6.75, 1), K('KeyJ', 'J', 7.75, 1), K('KeyK', 'K', 8.75, 1), K('KeyL', 'L', 9.75, 1),
+        K('Enter', 'Enter', 10.75, 1, 2.25),
+
+        K('ShiftLeft', 'Shift', 0, 2, 2.25),
+        K('KeyZ', 'Z', 2.25, 2), K('KeyX', 'X', 3.25, 2), K('KeyC', 'C', 4.25, 2), K('KeyV', 'V', 5.25, 2), K('KeyB', 'B', 6.25, 2),
+        K('KeyN', 'N', 7.25, 2), K('KeyM', 'M', 8.25, 2), K('Comma', ',', 9.25, 2), K('Period', '.', 10.25, 2),
+        K('ShiftRight', 'Shift', 11.25, 2, 1.75),
+
+        K('ControlLeft', 'Ctrl', 0, 3, 1.5), K('MetaLeft', 'Win', 1.5, 3, 1.5), K('AltLeft', 'Alt', 3, 3, 1.5),
+        K('Fn', 'Fn', 4.5, 3, 1.5), K('Space', '', 6, 3, 4), K('AltRight', 'Alt', 10, 3, 1.5), K('ControlRight', 'Ctrl', 11.5, 3, 1.5)
+      ]
     }
   };
 

@@ -128,19 +128,21 @@ html, body {
   overflow-x: auto;
   outline: none;
 }
-.kb-stage--mini { padding: 16px; --unit: 30px; }
+.kb-stage { --unit: 38px; }
+.kb-stage--mini { padding: 16px; --unit: 27px; }
 
-.kb-cluster { display: flex; gap: 16px; align-items: flex-start; width: max-content; }
-.kb-block { display: flex; flex-direction: column; gap: 6px; }
-
-.kb-row { display: flex; gap: 6px; }
-
-.kb-spacer { flex: 0 0 auto; width: calc(var(--kw, 1) * var(--unit)); height: var(--unit); }
+.kb {
+  position: relative;
+  width: calc(var(--kb-w, 15) * var(--unit));
+  height: calc(var(--kb-h, 5) * var(--unit));
+}
 
 .kb-key {
-  flex: 0 0 auto;
-  width: calc(var(--kw, 1) * var(--unit));
-  height: var(--unit);
+  position: absolute;
+  left: calc(var(--x) * var(--unit));
+  top: calc(var(--y) * var(--unit));
+  width: calc(var(--w) * var(--unit) - 6px);
+  height: calc(var(--h) * var(--unit) - 6px);
   border-radius: 7px;
   background: linear-gradient(180deg, #232a3a, #1a1f2c);
   border: 1px solid #2c3345;
@@ -150,9 +152,9 @@ html, body {
   font-size: 11px;
   color: #c4cadb;
   transition: transform .04s ease, background .12s ease, border-color .12s ease;
-  position: relative;
+  box-sizing: border-box;
 }
-.kb-key--tall { height: calc(2 * var(--unit) + 6px); align-items: flex-end; }
+.kb-key--tall { align-items: flex-end; }
 .kb-key__label { pointer-events: none; }
 
 .kb-key.is-pressed {
